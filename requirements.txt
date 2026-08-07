@@ -1,1 +1,4 @@
 tiktoken
+# optional, neural backend only:
+# torch
+# transformers

@@ -22,6 +22,7 @@ import tiktoken
 
 ENC = tiktoken.get_encoding("o200k_base")
 MAGIC = "DENSE1"
+MAGIC_NEURAL = "DENSE2"
 
 
 def _alphabet():
@@ -46,23 +47,44 @@ def ntok(s: str) -> int:
     return len(ENC.encode(s))
 
 
-def compress(text: str) -> str:
-    raw = text.encode("utf-8")
-    packed = lzma.compress(raw, preset=9 | lzma.PRESET_EXTREME)
+def _pack_words(packed: bytes):
     pad = len(packed) % 2
     if pad:
         packed += b"\x00"
     body = "".join(
         WORDS[(packed[i] << 8) | packed[i + 1]] for i in range(0, len(packed), 2)
     )
+    return body, pad
+
+
+def compress(text: str, backend: str = "lzma") -> str:
+    if backend == "neural":
+        try:
+            payload = _compress_neural(text)
+            if decompress(payload) == text:
+                return payload
+            print("neural round-trip mismatch, falling back to lzma", file=sys.stderr)
+        except Exception as e:
+            print(f"neural backend failed ({e}), falling back to lzma", file=sys.stderr)
+    raw = text.encode("utf-8")
+    body, pad = _pack_words(lzma.compress(raw, preset=9 | lzma.PRESET_EXTREME))
     digest = hashlib.sha256(raw).hexdigest()[:16]
     return f"{MAGIC} pad={pad} sha={digest}\n{body}"
 
 
+def _compress_neural(text: str) -> str:
+    import neural
+    data, n_tokens = neural.encode(text)
+    body, pad = _pack_words(data)
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    return f"{MAGIC_NEURAL} pad={pad} sha={digest} n={n_tokens}\n{body}"
+
+
 def decompress(payload: str) -> str:
     header, _, body = payload.partition("\n")
-    magic, pad_kv, sha_kv = header.split(" ")
-    if magic != MAGIC:
+    fields = header.split(" ")
+    magic, pad_kv, sha_kv = fields[0], fields[1], fields[2]
+    if magic not in (MAGIC, MAGIC_NEURAL):
         raise ValueError("not a ctxdense payload")
     pad = int(pad_kv.split("=")[1])
     want_sha = sha_kv.split("=")[1]
@@ -76,6 +98,13 @@ def decompress(payload: str) -> str:
         out.append(idx & 0xFF)
     if pad:
         out = out[:-1]
+    if magic == MAGIC_NEURAL:
+        import neural
+        n_tokens = int(fields[3].split("=")[1])
+        text = neural.decode(bytes(out), n_tokens)
+        if hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] != want_sha:
+            raise ValueError("sha mismatch after decompression")
+        return text
     try:
         raw = lzma.decompress(bytes(out))
     except lzma.LZMAError as e:
@@ -92,6 +121,7 @@ def main():
     c = sub.add_parser("compress", help="file -> dense payload (stdout or -o)")
     c.add_argument("file")
     c.add_argument("-o", "--output")
+    c.add_argument("--backend", choices=["lzma", "neural"], default="lzma")
 
     d = sub.add_parser("decompress", help="payload file -> original (stdout or -o)")
     d.add_argument("file")
@@ -104,7 +134,7 @@ def main():
 
     if args.cmd == "compress":
         text = open(args.file, encoding="utf-8").read()
-        payload = compress(text)
+        payload = compress(text, backend=args.backend)
         if decompress(payload) != text:
             sys.exit("round-trip verification failed, refusing to write output")
         _write(args.output, payload)

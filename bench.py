@@ -64,8 +64,8 @@ def log_sample():
     return "\n".join(lines)
 
 
-def run(label, text):
-    payload = compress(text)
+def run(label, text, backend="lzma"):
+    payload = compress(text, backend=backend)
     assert decompress(payload) == text, f"round-trip failed for {label}"
     o, c = ntok(text), ntok(payload)
     print(f"{label:30} {o:>8} -> {c:>7} tokens  "
@@ -74,12 +74,17 @@ def run(label, text):
 
 
 if __name__ == "__main__":
+    neural = "--neural" in sys.argv
+    paths = [a for a in sys.argv[1:] if a != "--neural"]
     print(f"{'scenario':30} {'tokens (o200k)':>18}")
+    if neural:  # slow path: LLM+arithmetic coding, code scenario only
+        run("code, neural backend", code_sample(), backend="neural")
+        sys.exit(0)
     total_o = total_p = 0
     scenarios = [("code (argparse.py + ctxdense)", code_sample()),
                  ("json (code search, 100 hits)", json_sample()),
                  ("log (SRE incident, ~1500 ln)", log_sample())]
-    for path in sys.argv[1:]:
+    for path in paths:
         scenarios.append((path, open(path, encoding="utf-8").read()))
     for label, text in scenarios:
         o, c = run(label, text)
