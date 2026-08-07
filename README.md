@@ -71,6 +71,29 @@ assert decompress(payload) == text  # always true, sha256-checked
 `compress` via the CLI self-verifies the round trip before writing output;
 `decompress` raises `ValueError` on any corruption or hash mismatch.
 
+## Use it in Claude Code / Cursor (MCP)
+
+```bash
+# Claude Code
+claude mcp add ctxdense -- python3 /path/to/ctxdense/ctxdense_mcp.py
+
+# Cursor (~/.cursor/mcp.json) and other MCP clients
+{"mcpServers": {"ctxdense": {"command": "python3", "args": ["/path/to/ctxdense/ctxdense_mcp.py"]}}}
+```
+
+Three tools:
+
+- **compress_file(path)** — agent calls this *instead of reading* a large
+  log/JSON/dump: gets a preview + dense payload at 2x-8x fewer tokens.
+- **compress_text(text)** — same for a big tool output already in hand.
+- **expand(payload, start_line, end_line)** — exact original back,
+  sha256-verified; line ranges let the agent pay only for the slice it
+  needs.
+
+The payload lives in the conversation itself, so exact data survives
+context compaction, session export, and moving to another machine — no
+local cache, no TTL, nothing to expire.
+
 ## The honest caveats
 
 - **The payload is not readable** — by humans or by the model. It looks

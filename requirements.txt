@@ -1,4 +1,5 @@
 tiktoken
+mcp
 # optional, neural backend only:
 # torch
 # transformers
