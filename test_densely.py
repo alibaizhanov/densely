@@ -3,7 +3,7 @@ import string
 
 import pytest
 
-from ctxdense import ENC, WORDS, compress, decompress, ntok
+from densely import ENC, WORDS, compress, decompress, ntok
 
 
 CASES = {

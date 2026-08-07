@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ctxdense — lossless context compression for LLMs.
+"""densely — lossless context compression for LLMs.
 
 Packs any text into ~2x-8x fewer o200k tokens with guaranteed byte-exact
 reconstruction. Pipeline: lzma -> 16-bit chunks -> alphabet of 65,536
@@ -85,7 +85,7 @@ def decompress(payload: str) -> str:
     fields = header.split(" ")
     magic, pad_kv, sha_kv = fields[0], fields[1], fields[2]
     if magic not in (MAGIC, MAGIC_NEURAL):
-        raise ValueError("not a ctxdense payload")
+        raise ValueError("not a densely payload")
     pad = int(pad_kv.split("=")[1])
     want_sha = sha_kv.split("=")[1]
 

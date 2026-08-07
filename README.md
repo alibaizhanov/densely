@@ -1,11 +1,11 @@
-# ctxdense
+# densely
 
 **Lossless context compression for LLMs.** Pack any text into 2x–8x fewer
 tokens with guaranteed byte-exact reconstruction — verified by sha256 on
 every decompress.
 
 An o200k token can carry up to ~17.6 bits of information, but typical code
-occupies tokens at only ~5–6 bits each. ctxdense reclaims the difference:
+occupies tokens at only ~5–6 bits each. densely reclaims the difference:
 
 ```
 text -> lzma -> 16-bit chunks -> 65,536 single-token English words
@@ -22,7 +22,7 @@ Reproduce with `python3 bench.py` (fixed seeds, stdlib code sample):
 
 | Scenario                      | Backend | Tokens (o200k)    | Ratio | Saved |
 |-------------------------------|---------|-------------------|-------|-------|
-| Code (argparse.py + ctxdense) | lzma    | 21,659 → 10,726   | 2.02x | 50.5% |
+| Code (argparse.py + densely) | lzma    | 21,659 → 10,726   | 2.02x | 50.5% |
 | Code (same sample)            | neural  | 21,659 → 2,538    | 8.53x | **88.3%** |
 | Code never seen by the model  | neural  | 3,433 → 472       | 7.27x | **86.3%** |
 | JSON (code search, 100 hits)  | lzma    | 15,465 → 1,995    | 7.75x | 87.1% |
@@ -38,32 +38,32 @@ benefits from the model having seen Python's stdlib during training; the
 For comparison, [Headroom](https://github.com/headroomlabs-ai/headroom)
 reports 15–20% savings for coding agents and 60–95% on JSON — achieved by
 *dropping* content from context, with originals kept in a local cache with
-a TTL. ctxdense keeps the full data in the context itself, restorable
+a TTL. densely keeps the full data in the context itself, restorable
 byte-for-byte with no external storage and no expiry.
 
 Lossless compression below the entropy of the data is mathematically
 impossible (Shannon; see also [Fundamental Limits of Prompt
 Compression](https://arxiv.org/abs/2407.15504)) — within that bound,
-ctxdense sits near the practical ceiling for a deterministic, CPU-only
+densely sits near the practical ceiling for a deterministic, CPU-only
 method.
 
 ## Usage
 
 ```bash
-git clone https://github.com/alibaizhanov/ctxdense && cd ctxdense
+git clone https://github.com/alibaizhanov/densely && cd densely
 pip install tiktoken                    # lzma backend (default)
 pip install torch transformers          # optional: neural backend
 
-python3 ctxdense.py compress  big_context.txt -o payload.ctxd
-python3 ctxdense.py compress  src.py -o payload.ctxd --backend neural
-python3 ctxdense.py decompress payload.ctxd   -o restored.txt   # byte-identical
-python3 ctxdense.py stats     file1.py file2.json                # token savings
+python3 densely.py compress  big_context.txt -o payload.dense
+python3 densely.py compress  src.py -o payload.dense --backend neural
+python3 densely.py decompress payload.dense   -o restored.txt   # byte-identical
+python3 densely.py stats     file1.py file2.json                # token savings
 ```
 
 Library:
 
 ```python
-from ctxdense import compress, decompress
+from densely import compress, decompress
 
 payload = compress(text)        # ~2x-8x fewer tokens
 assert decompress(payload) == text  # always true, sha256-checked
@@ -76,10 +76,10 @@ assert decompress(payload) == text  # always true, sha256-checked
 
 ```bash
 # Claude Code
-claude mcp add ctxdense -- python3 /path/to/ctxdense/ctxdense_mcp.py
+claude mcp add densely -- python3 /path/to/densely/densely_mcp.py
 
 # Cursor (~/.cursor/mcp.json) and other MCP clients
-{"mcpServers": {"ctxdense": {"command": "python3", "args": ["/path/to/ctxdense/ctxdense_mcp.py"]}}}
+{"mcpServers": {"densely": {"command": "python3", "args": ["/path/to/densely/densely_mcp.py"]}}}
 ```
 
 Three tools:
@@ -126,7 +126,7 @@ local cache, no TTL, nothing to expire.
 ## Tests
 
 ```bash
-python3 -m pytest test_ctxdense.py      # fast: lzma backend, 13 tests
+python3 -m pytest test_densely.py      # fast: lzma backend, 13 tests
 python3 -m pytest test_neural.py        # slow (~1 min): real LLM round trips
 ```
 

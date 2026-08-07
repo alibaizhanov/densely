@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible benchmark for ctxdense.
+"""Reproducible benchmark for densely.
 
 Scenarios mirror typical agent context: source code, tool-output JSON,
 and service logs. JSON/log data is generated with a fixed seed; the code
@@ -14,12 +14,12 @@ import json
 import random
 import sys
 
-from ctxdense import compress, decompress, ntok
+from densely import compress, decompress, ntok
 
 
 def code_sample():
     parts = [open(argparse_module.__file__, encoding="utf-8").read(),
-             open("ctxdense.py", encoding="utf-8").read()]
+             open("densely.py", encoding="utf-8").read()]
     return "\n".join(parts)
 
 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         run("code, neural backend", code_sample(), backend="neural")
         sys.exit(0)
     total_o = total_p = 0
-    scenarios = [("code (argparse.py + ctxdense)", code_sample()),
+    scenarios = [("code (argparse.py + densely)", code_sample()),
                  ("json (code search, 100 hits)", json_sample()),
                  ("log (SRE incident, ~1500 ln)", log_sample())]
     for path in paths:

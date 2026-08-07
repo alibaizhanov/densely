@@ -5,9 +5,9 @@ runs real LLM+arithmetic-coding round trips. Run explicitly:
 """
 
 import neural
-from ctxdense import MAGIC_NEURAL, compress, decompress
+from densely import MAGIC_NEURAL, compress, decompress
 
-SMALL_CODE = open("ctxdense.py", encoding="utf-8").read()[:800]
+SMALL_CODE = open("densely.py", encoding="utf-8").read()[:800]
 
 
 def test_single_segment_roundtrip():
@@ -24,7 +24,7 @@ def test_multi_segment_roundtrip(monkeypatch):
 
 
 def test_beats_lzma_on_code():
-    from ctxdense import ntok
+    from densely import ntok
     dense = compress(SMALL_CODE, backend="neural")
     plain = compress(SMALL_CODE)
     assert dense.startswith(MAGIC_NEURAL)  # did not silently fall back

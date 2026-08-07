@@ -1,10 +1,10 @@
-"""Neural backend for ctxdense: LLM + arithmetic coding.
+"""Neural backend for densely: LLM + arithmetic coding.
 
 Qwen2.5-Coder-0.5B predicts next-token probabilities; an integer
 arithmetic coder turns them into bits. The decoder runs the exact same
 sequence of forwards (same tensor shapes, same device), reproducing the
 same probabilities, so reconstruction is bit-exact on the machine that
-compressed. ctxdense.compress() verifies the full round trip and falls
+compressed. densely.compress() verifies the full round trip and falls
 back to the lzma backend on any mismatch, so the 100% guarantee never
 rests on this module.
 

@@ -1,6 +1,6 @@
 import pytest
 
-from ctxdense_mcp import compress_file, compress_text, expand
+from densely_mcp import compress_file, compress_text, expand
 
 
 LOG = "\n".join(

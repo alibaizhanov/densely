@@ -2,19 +2,19 @@
 
 **Title options (HN limit 80 chars):**
 
-1. Show HN: Ctxdense – lossless context compression for LLMs (86% on code)
+1. Show HN: Densely – lossless context compression for LLMs (86% on code)
 2. Show HN: Fit 5x more exact data in your agent's context window
 3. Show HN: I compressed LLM context 7x with byte-exact reconstruction
 
 **Post text:**
 
-Hi HN! I built ctxdense after a simple frustration: when my coding agent's
+Hi HN! I built densely after a simple frustration: when my coding agent's
 context fills up, compaction summarizes away the exact things I need later —
 config values, stack traces, file contents. Existing tools (like Headroom)
 drop content from context and keep originals in a local cache with a TTL;
 if the cache is gone, so is your data.
 
-ctxdense takes the opposite approach: the exact data stays *in the context*,
+densely takes the opposite approach: the exact data stays *in the context*,
 just denser. An o200k token can carry ~17.6 bits, but typical code occupies
 tokens at ~5-6 bits. So: lzma → 16-bit chunks → an alphabet of 65,536
 English words that each encode to exactly 1 token. Every payload token

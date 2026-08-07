@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""ctxdense MCP server: lossless context compression tools for AI agents.
+"""densely MCP server: lossless context compression tools for AI agents.
 
 Register with Claude Code:
-    claude mcp add ctxdense -- python3 /path/to/ctxdense/ctxdense_mcp.py
+    claude mcp add densely -- python3 /path/to/densely/densely_mcp.py
 
 Cursor / other MCP clients (mcpServers config):
-    {"ctxdense": {"command": "python3", "args": ["/path/to/ctxdense/ctxdense_mcp.py"]}}
+    {"densely": {"command": "python3", "args": ["/path/to/densely/densely_mcp.py"]}}
 
 Workflow: call compress_file INSTEAD of reading a large file (or
 compress_text on a large tool output). Keep the returned payload in the
@@ -15,9 +15,9 @@ the exact content back; use line ranges to pay only for the part you need.
 
 from mcp.server.fastmcp import FastMCP
 
-from ctxdense import compress, decompress, ntok
+from densely import compress, decompress, ntok
 
-mcp = FastMCP("ctxdense")
+mcp = FastMCP("densely")
 
 
 def _preview(text: str, lines: int = 5) -> str:
@@ -60,7 +60,7 @@ def compress_text(text: str) -> str:
 
 @mcp.tool()
 def expand(payload: str, start_line: int = 0, end_line: int = 0) -> str:
-    """Restore the exact original text from a ctxdense payload
+    """Restore the exact original text from a densely payload
     (sha256-verified, byte-identical). Pass start_line/end_line (1-based,
     inclusive) to return only that slice and spend fewer tokens; omit both
     for the full text."""
