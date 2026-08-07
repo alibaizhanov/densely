@@ -50,6 +50,7 @@ method.
 ## Usage
 
 ```bash
+git clone https://github.com/alibaizhanov/ctxdense && cd ctxdense
 pip install tiktoken                    # lzma backend (default)
 pip install torch transformers          # optional: neural backend
 
