@@ -13,11 +13,18 @@ conversation — it survives context compaction. Call expand when you need
 the exact content back; use line ranges to pay only for the part you need.
 """
 
+import os
+
 from mcp.server.fastmcp import FastMCP
 
 from densely import compress, decompress, ntok
 
 mcp = FastMCP("densely")
+
+# Larger payloads overflow MCP tool-output limits and get dumped to a
+# client-side file, losing the in-conversation property — write our own
+# .dense sidecar instead and return its path.
+INLINE_LIMIT_CHARS = 30_000
 
 
 def _preview(text: str, lines: int = 5) -> str:
@@ -26,18 +33,23 @@ def _preview(text: str, lines: int = 5) -> str:
     return head if len(rows) <= lines else head + f"\n... ({len(rows)} lines total)"
 
 
-def _compressed(text: str, label: str) -> str:
+def _compressed(text: str, label: str, sidecar: str) -> str:
     payload = compress(text)
     o, c = ntok(text), ntok(payload)
     if c >= o:
         return (f"{label} is not compressible ({o} tokens); returning original:\n\n{text}")
-    return (
-        f"{label}: {o} -> {c} tokens ({100 * (1 - c / o):.0f}% saved), "
-        f"{len(text.split(chr(10)))} lines, byte-exact recovery via expand.\n"
-        f"Preview:\n{_preview(text)}\n\n"
-        f"PAYLOAD (keep in conversation, pass to expand when exact content is needed):\n"
-        f"{payload}"
-    )
+    stats = (f"{label}: {o} -> {c} tokens ({100 * (1 - c / o):.0f}% saved), "
+             f"{len(text.split(chr(10)))} lines, byte-exact recovery via expand.\n"
+             f"Preview:\n{_preview(text)}\n\n")
+    if len(payload) <= INLINE_LIMIT_CHARS:
+        return (stats +
+                "PAYLOAD (keep in conversation, pass to expand when exact content is needed):\n"
+                + payload)
+    open(sidecar, "w", encoding="utf-8").write(payload)
+    return (stats +
+            f"Payload written to {sidecar} (too large to inline). "
+            f"Call expand with payload_file=\"{sidecar}\" and a line range "
+            f"to retrieve exact content without reading the original.")
 
 
 @mcp.tool()
@@ -47,7 +59,7 @@ def compress_file(path: str) -> str:
     dumps) you don't need to fully read right now. The payload is
     unreadable but restores the exact bytes via the expand tool."""
     text = open(path, encoding="utf-8").read()
-    return _compressed(text, path)
+    return _compressed(text, path, sidecar=path + ".dense")
 
 
 @mcp.tool()
@@ -55,15 +67,22 @@ def compress_text(text: str) -> str:
     """Compress a large piece of text (tool output, log excerpt, document)
     into a dense payload 2x-8x smaller in tokens. The payload is unreadable
     but restores the exact bytes via the expand tool."""
-    return _compressed(text, "text")
+    sidecar = os.path.join(os.path.expanduser("~"), ".densely-payload.dense")
+    return _compressed(text, "text", sidecar=sidecar)
 
 
 @mcp.tool()
-def expand(payload: str, start_line: int = 0, end_line: int = 0) -> str:
+def expand(payload: str = "", payload_file: str = "",
+           start_line: int = 0, end_line: int = 0) -> str:
     """Restore the exact original text from a densely payload
-    (sha256-verified, byte-identical). Pass start_line/end_line (1-based,
-    inclusive) to return only that slice and spend fewer tokens; omit both
-    for the full text."""
+    (sha256-verified, byte-identical). Pass the payload string itself OR
+    payload_file (path to a .dense file written by compress_file). Pass
+    start_line/end_line (1-based, inclusive) to return only that slice and
+    spend fewer tokens; omit both for the full text."""
+    if not payload and not payload_file:
+        raise ValueError("pass payload or payload_file")
+    if payload_file:
+        payload = open(payload_file, encoding="utf-8").read()
     text = decompress(payload)
     if start_line or end_line:
         rows = text.split("\n")

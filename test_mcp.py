@@ -46,3 +46,22 @@ def test_compress_file(tmp_path):
 def test_expand_rejects_garbage():
     with pytest.raises(ValueError):
         expand("not a payload at all")
+
+
+def test_large_file_goes_to_sidecar(tmp_path):
+    big = "\n".join(
+        f'row {i} trace={i*2654435761 % 2**64:016x} status=200' for i in range(20000)
+    )
+    p = tmp_path / "huge.log"
+    p.write_text(big)
+    result = compress_file(str(p))
+    sidecar = str(p) + ".dense"
+    assert sidecar in result and "PAYLOAD" not in result
+    assert expand(payload_file=sidecar) == big
+    out = expand(payload_file=sidecar, start_line=2, end_line=2)
+    assert out.endswith("row 1 trace=000000009e3779b1 status=200")
+
+
+def test_expand_requires_input():
+    with pytest.raises(ValueError):
+        expand()
