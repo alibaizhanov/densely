@@ -116,6 +116,19 @@ local cache, no TTL, nothing to expire.
   returning and silently falls back to lzma on any mismatch. The 100%
   guarantee never rests on the neural path.
 
+## Densely Pro (coming)
+
+The library is MIT and stays free. We're building a managed tier for
+teams running agents in production:
+
+- **Cloud neural compression** — 86% on code without a local GPU
+- **Managed proxy** — savings with zero code changes
+- **Team dashboard** — token savings per agent, per day, in dollars
+- **Cross-machine payloads** — compress in CI, expand anywhere
+
+**[Join the waitlist →](https://tally.so/r/Xx77V4)** (early access +
+founding-user pricing)
+
 ## Roadmap
 
 - Cross-machine determinism for the neural backend (integer/fixed-point

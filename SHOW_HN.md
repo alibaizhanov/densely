@@ -43,7 +43,7 @@ you'd want next.
 
 **Checklist before posting:**
 - [ ] Push repo to GitHub (public), update all /path/to/ examples
-- [ ] Add waitlist link (Tally/Formspree) to README "Pro" section: managed
+- [x] Waitlist live: https://tally.so/r/Xx77V4 (Pro section in README): managed
       proxy, savings dashboard, cross-machine neural determinism, team cache
 - [ ] GIF demo in README: agent compressing a log + expanding a line range
 - [ ] Post Tue-Thu, 8-10am US Eastern; reply to every comment fast
