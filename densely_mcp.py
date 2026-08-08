@@ -57,7 +57,9 @@ def compress_file(path: str) -> str:
     """Read a file and return it compressed 2x-8x as a dense payload plus a
     short preview. Use INSTEAD of reading large files (logs, JSON, data
     dumps) you don't need to fully read right now. The payload is
-    unreadable but restores the exact bytes via the expand tool."""
+    unreadable but restores the exact bytes via the expand tool.
+    Do NOT compress files you are actively editing or need to understand —
+    read those normally; compress reference material and bulky data."""
     text = open(path, encoding="utf-8").read()
     return _compressed(text, path, sidecar=path + ".dense")
 

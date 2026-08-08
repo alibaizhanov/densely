@@ -97,6 +97,42 @@ too large for MCP tool-output limits are written to a `.dense` sidecar
 file next to the original and expanded by path — a plain text file you
 can commit, ship, or archive; no cache, no TTL, nothing to expire.
 
+## When it saves tokens (and when it doesn't)
+
+Agent sessions resend the whole history to the API on every turn, so
+anything sitting in context is paid for again and again. What densely
+does to each kind of content:
+
+| Content in context | Savings | Why |
+|---|---|---|
+| Code the agent is *actively editing* | **none — don't compress it** | the agent must read it; payloads are unreadable |
+| Reference code (read once, kept "just in case") | 20–40% | exact copy stays cheap; `expand` a line range when needed |
+| Tool outputs: logs, JSON, dumps | **78–87%** | the agent never needed all 1,500 lines — preview + targeted expand covers it |
+| Anything that must survive compaction | indirect | payloads pass through compaction verbatim; summaries don't |
+
+Note on prompt caching: cached history is cheaper, but the context
+*window* stays the same size — densely primarily buys you room, then
+money.
+
+## vs. Headroom
+
+[Headroom](https://github.com/headroomlabs-ai/headroom) and densely make
+opposite trade-offs:
+
+- **Headroom is lossy-but-readable**: AST skeletons for code, sampled
+  JSON — the model can still read what remains, so it also saves 15–20%
+  on code the agent is actively using (densely saves nothing there).
+  Originals live in a local cache with a TTL; if the cache is gone, the
+  agent silently works from a skeleton it believes is the full file.
+- **densely is lossless-but-unreadable**: nothing is dropped, recovery
+  is byte-exact and sha256-verified, payloads live in the conversation
+  (or a plain `.dense` file) — surviving compaction, session export, and
+  machine moves. The cost: the model can't read a payload, so it only
+  helps for content the agent doesn't need to read in full.
+
+Different philosophies: *maximum savings with silent degradation* vs.
+*exactness or nothing*. Pick per content type — or use both.
+
 ## The honest caveats
 
 - **The payload is not readable** — by humans or by the model. It looks
