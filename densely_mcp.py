@@ -74,6 +74,27 @@ def compress_text(text: str) -> str:
 
 
 @mcp.tool()
+def search(pattern: str, payload: str = "", payload_file: str = "") -> str:
+    """Search inside a densely payload WITHOUT expanding it into context:
+    decompression happens server-side, only matching lines return. Use this
+    to count/find/filter (errors, ids, keywords) — it costs tokens only for
+    the matches, never for the whole content. Pattern is a Python regex."""
+    import re
+    if not payload and not payload_file:
+        raise ValueError("pass payload or payload_file")
+    if payload_file:
+        payload = open(payload_file, encoding="utf-8").read()
+    text = decompress(payload)
+    rows = text.split("\n")
+    hits = [(i + 1, r) for i, r in enumerate(rows) if re.search(pattern, r)]
+    if not hits:
+        return f"0 of {len(rows)} lines match {pattern!r}"
+    body = "\n".join(f"{n}:{r}" for n, r in hits[:200])
+    more = f"\n... ({len(hits) - 200} more matches)" if len(hits) > 200 else ""
+    return f"{len(hits)} of {len(rows)} lines match {pattern!r}:\n{body}{more}"
+
+
+@mcp.tool()
 def expand(payload: str = "", payload_file: str = "",
            start_line: int = 0, end_line: int = 0) -> str:
     """Restore the exact original text from a densely payload
