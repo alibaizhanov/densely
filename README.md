@@ -4,6 +4,8 @@
 tokens with guaranteed byte-exact reconstruction — verified by sha256 on
 every decompress.
 
+![demo](demo.gif)
+
 An o200k token can carry up to ~17.6 bits of information, but typical code
 occupies tokens at only ~5–6 bits each. densely reclaims the difference:
 
