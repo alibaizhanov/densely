@@ -78,10 +78,10 @@ assert decompress(payload) == text  # always true, sha256-checked
 
 ```bash
 # Claude Code
-claude mcp add --scope user densely -- python3 /path/to/densely/densely_mcp.py
+claude mcp add --scope user densely -- "$(which python3)" /path/to/densely/densely_mcp.py
 
 # Cursor (~/.cursor/mcp.json) and other MCP clients
-{"mcpServers": {"densely": {"command": "python3", "args": ["/path/to/densely/densely_mcp.py"]}}}
+{"mcpServers": {"densely": {"command": "/absolute/path/to/python3", "args": ["/path/to/densely/densely_mcp.py"]}}}
 ```
 
 Three tools:
