@@ -147,24 +147,25 @@ Note on prompt caching: cached history is cheaper, but the context
 *window* stays the same size — densely primarily buys you room, then
 money.
 
-## vs. Headroom
+## vs. the field
 
-[Headroom](https://github.com/headroomlabs-ai/headroom) and densely make
-opposite trade-offs:
+The main players make different trade-offs (numbers from each project's
+own published benchmarks):
 
-- **Headroom is lossy-but-readable**: AST skeletons for code, sampled
-  JSON — the model can still read what remains, so it also saves 15–20%
-  on code the agent is actively using (densely saves nothing there).
-  Originals live in a local cache with a TTL; if the cache is gone, the
-  agent silently works from a skeleton it believes is the full file.
-- **densely is lossless-but-unreadable**: nothing is dropped, recovery
-  is byte-exact and sha256-verified, payloads live in the conversation
-  (or a plain `.dense` file) — surviving compaction, session export, and
-  machine moves. The cost: the model can't read a payload, so it only
-  helps for content the agent doesn't need to read in full.
+|  | densely | [Headroom](https://github.com/headroomlabs-ai/headroom) | [claw-compactor](https://github.com/open-compress/claw-compactor) |
+|---|---|---|---|
+| Approach | entropy coding -> single-token carrier | lossy selection, model-readable output | 14 readable transform stages (2 lossy) |
+| Exact recovery | **always: sha256-verified, in-conversation** | TTL cache, retrieval on demand | LRU "RewindStore", no verification documented |
+| Logs | **85.6%** | ~92% (lossy) | 24.1% |
+| JSON | 87.1% (lossless) | 60–95% (lossy) | 81.9% (via lossy sampling) |
+| Code (active use) | none — by design | 15–20% (AST skeletons) | 25% |
+| Model reads output | no (search/expand tools) | yes | yes |
+| Agent integrations | MCP + hook + skill (Claude Code, Cursor) | proxy + wrap + MCP | CLI only |
 
 Different philosophies: *maximum savings with silent degradation* vs.
-*exactness or nothing*. Pick per content type — or use both.
+*exactness or nothing*. Readable-lossy tools win on content the model
+must keep reading; densely wins when the data must never be wrong and
+must survive compaction, export, and machine moves. Use both.
 
 ## The honest caveats
 
