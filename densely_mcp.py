@@ -74,6 +74,30 @@ def compress_text(text: str) -> str:
 
 
 @mcp.tool()
+def stats() -> str:
+    """Show cumulative tokens saved by densely on this machine (from the
+    auto-compression hook ledger)."""
+    import time
+    from densely_hook import LEDGER
+    import json as _json
+    day = week = total = 0
+    now = time.time()
+    try:
+        with open(LEDGER) as fh:
+            for line in fh:
+                rec = _json.loads(line)
+                total += rec["saved"]
+                if now - rec["ts"] < 86400:
+                    day += rec["saved"]
+                if now - rec["ts"] < 7 * 86400:
+                    week += rec["saved"]
+    except FileNotFoundError:
+        return "densely has not saved anything yet on this machine."
+    return (f"densely savings: {day} tokens today, {week} this week, "
+            f"{total} all-time on this machine.")
+
+
+@mcp.tool()
 def search(pattern: str, payload: str = "", payload_file: str = "") -> str:
     """Search inside a densely payload WITHOUT expanding it into context:
     decompression happens server-side, only matching lines return. Use this

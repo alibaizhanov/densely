@@ -99,6 +99,35 @@ too large for MCP tool-output limits are written to a `.dense` sidecar
 file next to the original and expanded by path — a plain text file you
 can commit, ship, or archive; no cache, no TTL, nothing to expire.
 
+## Automatic mode (hook)
+
+Zero-effort savings: a PostToolUse hook compresses every large tool
+output (Bash output, Read of non-code files, >= 5,000 tokens) on the
+fly — the agent sees a preview + stats, exact content stays available
+via search/expand, and every replacement is recorded in a savings
+ledger (`stats` tool, or the running total shown in each replacement).
+
+Add to `~/.claude/settings.json` (absolute paths — hooks run outside
+your shell PATH):
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Read|Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "/absolute/path/to/python3 /path/to/densely/densely_hook.py",
+        "timeout": 30
+      }]
+    }]
+  }
+}
+```
+
+Tune with `DENSELY_HOOK_MIN_TOKENS` (default 5000). Code files the agent
+is editing are never touched.
+
 ## When it saves tokens (and when it doesn't)
 
 Agent sessions resend the whole history to the API on every turn, so
