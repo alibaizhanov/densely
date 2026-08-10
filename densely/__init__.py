@@ -118,4 +118,4 @@ def decompress(payload: str) -> str:
     return raw.decode("utf-8")
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
