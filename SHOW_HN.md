@@ -28,7 +28,12 @@ Numbers (reproducible, `python3 bench.py`):
   coding): 7.27x (86%) on code the model has never seen — slow, but it's
   the densest lossless figure I know of for LLM context
 
-There's an MCP server, so it works in Claude Code and Cursor today: the
+Site: https://densely.dev
+
+There's an MCP server (works in Claude Code and Cursor today) and an
+automatic mode: a PostToolUse hook compresses every large tool output on
+the fly and keeps a savings ledger — tokens saved today/this week, so
+the effect on your usage cap is a number, not vibes. In manual mode: the
 agent compresses a 100k-token log to ~15k, keeps the payload in
 conversation (survives compaction), and expands exact line ranges on
 demand.
@@ -42,7 +47,8 @@ MIT licensed. Would love feedback on the approach and what integration
 you'd want next.
 
 **Checklist before posting:**
-- [ ] Push repo to GitHub (public), update all /path/to/ examples
+- [x] Repo public: github.com/alibaizhanov/densely
+- [x] Landing live: https://densely.dev
 - [x] Waitlist live: https://tally.so/r/Xx77V4 (Pro section in README): managed
       proxy, savings dashboard, cross-machine neural determinism, team cache
 - [ ] GIF demo in README: agent compressing a log + expanding a line range
