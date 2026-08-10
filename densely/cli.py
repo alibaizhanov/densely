@@ -14,6 +14,8 @@ def main():
     c.add_argument("file")
     c.add_argument("-o", "--output")
     c.add_argument("--backend", choices=["lzma", "neural"], default="lzma")
+    c.add_argument("--alphabet", default="o200k",
+                   help="carrier alphabet: o200k (default) or a name from densely/alphabets/")
     c.add_argument("--preset", choices=["auto", "fast", "max"], default="auto",
                    help="fast: ~13x quicker, a few %% worse ratio; auto: max density, quick preset above 2MB")
 
@@ -30,7 +32,8 @@ def main():
         text = open(args.file, encoding="utf-8").read()
         import lzma as _lzma
         preset = {"auto": None, "fast": 3, "max": 9 | _lzma.PRESET_EXTREME}[args.preset]
-        payload = compress(text, backend=args.backend, preset=preset)
+        payload = compress(text, backend=args.backend, preset=preset,
+                           alphabet=args.alphabet)
         if decompress(payload) != text:
             sys.exit("round-trip verification failed, refusing to write output")
         _write(args.output, payload)

@@ -49,19 +49,25 @@ def _preview(text: str, lines: int = 5) -> str:
     return head if len(rows) <= lines else head + f"\n... ({len(rows)} lines total)"
 
 
+ALPHABET = os.environ.get("DENSELY_ALPHABET", "o200k")
+
+
 def _compressed(text: str, label: str, sidecar: str) -> str:
-    payload = compress(text)
+    payload = compress(text, alphabet=ALPHABET)
     o, c = ntok(text), ntok(payload)
     if c >= o:
         return (f"{label} is not compressible ({o} tokens); returning original:\n\n{text}")
     stats = (f"{label}: {o} -> {c} tokens ({100 * (1 - c / o):.0f}% saved), "
              f"{len(text.split(chr(10)))} lines, byte-exact recovery via expand.\n"
              f"Preview:\n{_preview(text)}\n\n")
+    # sidecar is always written: context compaction may drop inline content,
+    # but a file on disk (and its path, carried into any summary) survives
+    open(sidecar, "w", encoding="utf-8").write(payload)
     if len(payload) <= INLINE_LIMIT_CHARS:
         return (stats +
+                f"Backup copy: {sidecar} (compaction-safe; expand accepts payload_file).\n"
                 "PAYLOAD (keep in conversation, pass to expand when exact content is needed):\n"
                 + payload)
-    open(sidecar, "w", encoding="utf-8").write(payload)
     return (stats +
             f"Payload written to {sidecar} (too large to inline). "
             f"Call expand with payload_file=\"{sidecar}\" and a line range "

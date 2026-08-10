@@ -51,7 +51,13 @@ def check_anthropic(model):
                          "messages": [{"role": "user", "content": carrier}]}).encode(),
         headers={"x-api-key": key, "anthropic-version": "2023-06-01",
                  "content-type": "application/json"})
-    with urllib.request.urlopen(req) as resp:
+    import ssl
+    try:
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ctx = ssl.create_default_context()
+    with urllib.request.urlopen(req, context=ctx) as resp:
         tokens = json.load(resp)["input_tokens"]
     overhead = 8  # rough per-request scaffolding tokens
     per_word = max(tokens - overhead, 1) / n

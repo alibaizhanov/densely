@@ -68,3 +68,13 @@ def test_fast_preset_roundtrip():
     from densely import compress, decompress
     assert decompress(compress(big)) == big
     assert decompress(compress(big, preset=6)) == big
+
+
+def test_generic_alphabet_roundtrip():
+    import densely
+    words = densely.WORDS[:16384]
+    densely._ALPHABETS["t14"] = (words, 14, {w: i for i, w in enumerate(words)})
+    text = "exact bytes must survive compression 100% ✓\n" * 200
+    p = densely.compress(text, alphabet="t14")
+    assert "alph=t14" in p.split("\n")[0]
+    assert densely.decompress(p) == text

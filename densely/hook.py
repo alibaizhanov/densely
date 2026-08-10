@@ -73,7 +73,7 @@ def main():
     orig_tokens = ntok(text)
     if orig_tokens < MIN_TOKENS:
         return
-    payload = compress(text)
+    payload = compress(text, alphabet=os.environ.get("DENSELY_ALPHABET", "o200k"))
     payload_tokens = ntok(payload)
     if payload_tokens >= orig_tokens:
         return

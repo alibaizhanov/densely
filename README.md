@@ -92,11 +92,19 @@ Three tools:
   original back, sha256-verified; line ranges let the agent pay only for
   the slice it needs.
 
-Small payloads are returned inline and live in the conversation itself,
-so exact data survives context compaction and session export. Payloads
-too large for MCP tool-output limits are written to a `.dense` sidecar
-file next to the original and expanded by path — a plain text file you
-can commit, ship, or archive; no cache, no TTL, nothing to expire.
+Every compression also writes a `.dense` sidecar file next to the
+original — a plain text file you can commit, ship, or archive; no cache,
+no TTL, nothing to expire. Small payloads are additionally returned
+inline. This matters for context compaction: a compaction summary
+replaces old conversation content, so an inline payload alone could be
+summarized away — but the sidecar on disk (and its path, which carries
+into summaries) cannot. If you use the Anthropic compaction API beta
+directly, add this to your `instructions` so payload references survive
+verbatim:
+
+> Preserve any densely payload references (paths ending in .dense, or
+> lines starting with DENSE1/DENSE2) verbatim in the summary. Do not
+> call any tools while writing this summary.
 
 ## Automatic mode (hook)
 

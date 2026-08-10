@@ -41,6 +41,50 @@ WORDS = _alphabet()
 INDEX = {w: i for i, w in enumerate(WORDS)}
 assert len(WORDS) == 65536
 
+# альтернативные алфавиты (напр. эмпирически откалиброванные под закрытые
+# токенизаторы, см. tools/build_alphabet.py) лежат в densely/alphabets/*.txt
+import math
+import os
+
+_ALPHABETS = {"o200k": (WORDS, 16, INDEX)}
+
+
+def _get_alphabet(name: str):
+    if name not in _ALPHABETS:
+        path = os.path.join(os.path.dirname(__file__), "alphabets", name + ".txt")
+        words = [" " + w for w in open(path, encoding="utf-8").read().split()]
+        bits = int(math.log2(len(words)))
+        words = words[: 1 << bits]
+        _ALPHABETS[name] = (words, bits, {w: i for i, w in enumerate(words)})
+    return _ALPHABETS[name]
+
+
+def _pack_bits(data: bytes, bits: int):
+    acc = nacc = 0
+    out = []
+    mask = (1 << bits) - 1
+    for byte in data:
+        acc = (acc << 8) | byte
+        nacc += 8
+        while nacc >= bits:
+            nacc -= bits
+            out.append((acc >> nacc) & mask)
+    if nacc:
+        out.append((acc << (bits - nacc)) & mask)
+    return out
+
+
+def _unpack_bits(indices, bits: int, nbytes: int) -> bytes:
+    acc = nacc = 0
+    out = bytearray()
+    for idx in indices:
+        acc = (acc << bits) | idx
+        nacc += bits
+        while nacc >= 8:
+            nacc -= 8
+            out.append((acc >> nacc) & 0xFF)
+    return bytes(out[:nbytes])
+
 
 def ntok(s: str) -> int:
     return len(ENC.encode(s))
@@ -59,7 +103,8 @@ def _pack_words(packed: bytes):
 FAST_PRESET_THRESHOLD = 2_000_000  # bytes; above this lzma -9e gets slow
 
 
-def compress(text: str, backend: str = "lzma", preset: int | None = None) -> str:
+def compress(text: str, backend: str = "lzma", preset: int | None = None,
+             alphabet: str = "o200k") -> str:
     if backend == "neural":
         try:
             payload = _compress_neural(text)
@@ -71,8 +116,13 @@ def compress(text: str, backend: str = "lzma", preset: int | None = None) -> str
     raw = text.encode("utf-8")
     if preset is None:
         preset = 6 if len(raw) > FAST_PRESET_THRESHOLD else 9 | lzma.PRESET_EXTREME
-    body, pad = _pack_words(lzma.compress(raw, preset=preset))
+    packed = lzma.compress(raw, preset=preset)
     digest = hashlib.sha256(raw).hexdigest()[:16]
+    if alphabet != "o200k":
+        words, bits, _ = _get_alphabet(alphabet)
+        body = "".join(words[i] for i in _pack_bits(packed, bits))
+        return f"{MAGIC} alph={alphabet} len={len(packed)} sha={digest}\n{body}"
+    body, pad = _pack_words(packed)
     return f"{MAGIC} pad={pad} sha={digest}\n{body}"
 
 
@@ -87,11 +137,23 @@ def _compress_neural(text: str) -> str:
 def decompress(payload: str) -> str:
     header, _, body = payload.partition("\n")
     fields = header.split(" ")
-    magic, pad_kv, sha_kv = fields[0], fields[1], fields[2]
+    magic = fields[0]
     if magic not in (MAGIC, MAGIC_NEURAL):
         raise ValueError("not a densely payload")
-    pad = int(pad_kv.split("=")[1])
-    want_sha = sha_kv.split("=")[1]
+    kv = dict(f.split("=", 1) for f in fields[1:] if "=" in f)
+    want_sha = kv["sha"]
+    if "alph" in kv:
+        words, bits, index = _get_alphabet(kv["alph"])
+        indices = [index[" " + piece] for piece in body.split(" ") if piece]
+        packed = _unpack_bits(indices, bits, int(kv["len"]))
+        try:
+            raw = lzma.decompress(packed)
+        except lzma.LZMAError as e:
+            raise ValueError(f"corrupt payload: {e}") from e
+        if hashlib.sha256(raw).hexdigest()[:16] != want_sha:
+            raise ValueError("sha mismatch after decompression")
+        return raw.decode("utf-8")
+    pad = int(kv["pad"])
 
     out = bytearray()
     for piece in body.split(" "):

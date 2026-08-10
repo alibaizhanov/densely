@@ -93,3 +93,12 @@ def test_search_uses_decompress_cache():
     assert len(mcp_server._TEXT_CACHE) == 1
     assert search("status=200", payload=payload) == first
     assert len(mcp_server._TEXT_CACHE) == 1
+
+
+def test_small_file_also_writes_sidecar(tmp_path):
+    p = tmp_path / "small.log"
+    p.write_text(LOG)
+    result = compress_file(str(p))
+    sidecar = str(p) + ".dense"
+    assert "PAYLOAD" in result and sidecar in result  # inline AND backup
+    assert expand(payload_file=sidecar) == LOG
