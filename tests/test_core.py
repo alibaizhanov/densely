@@ -60,3 +60,11 @@ def test_compresses_redundant_text():
     text = '{"file": "src/app.py", "line": 42, "match": "def main():"}\n' * 200
     payload = compress(text)
     assert ntok(payload) < ntok(text) / 4
+
+
+def test_fast_preset_roundtrip():
+    big = "log line with some variety %d\n" * 1 % 0 + ("x" * 50 + "\n") * 60000
+    assert len(big.encode()) > 2_000_000  # triggers auto fast preset
+    from densely import compress, decompress
+    assert decompress(compress(big)) == big
+    assert decompress(compress(big, preset=6)) == big

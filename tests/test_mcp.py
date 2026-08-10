@@ -82,3 +82,14 @@ def test_search_no_match():
     from densely.mcp_server import search
     payload = _payload_of(compress_text(LOG))
     assert search("nonexistent_xyz", payload=payload).startswith("0 of 300")
+
+
+def test_search_uses_decompress_cache():
+    from densely import mcp_server
+    mcp_server._TEXT_CACHE.clear()
+    payload = _payload_of(compress_text(LOG))
+    from densely.mcp_server import search
+    first = search("status=200", payload=payload)
+    assert len(mcp_server._TEXT_CACHE) == 1
+    assert search("status=200", payload=payload) == first
+    assert len(mcp_server._TEXT_CACHE) == 1

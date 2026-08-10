@@ -26,6 +26,22 @@ mcp = FastMCP("densely")
 # .dense sidecar instead and return its path.
 INLINE_LIMIT_CHARS = 30_000
 
+# search/expand re-read the same payload across agent turns; cache the
+# decompressed text keyed by the header line (contains the sha).
+_TEXT_CACHE: dict = {}
+_TEXT_CACHE_MAX = 8
+
+
+def _decompress_cached(payload: str) -> str:
+    key = payload.split("\n", 1)[0]
+    text = _TEXT_CACHE.get(key)
+    if text is None:
+        text = decompress(payload)
+        if len(_TEXT_CACHE) >= _TEXT_CACHE_MAX:
+            _TEXT_CACHE.pop(next(iter(_TEXT_CACHE)))
+        _TEXT_CACHE[key] = text
+    return text
+
 
 def _preview(text: str, lines: int = 5) -> str:
     rows = text.split("\n")
@@ -108,7 +124,7 @@ def search(pattern: str, payload: str = "", payload_file: str = "") -> str:
         raise ValueError("pass payload or payload_file")
     if payload_file:
         payload = open(payload_file, encoding="utf-8").read()
-    text = decompress(payload)
+    text = _decompress_cached(payload)
     rows = text.split("\n")
     hits = [(i + 1, r) for i, r in enumerate(rows) if re.search(pattern, r)]
     if not hits:
@@ -130,7 +146,7 @@ def expand(payload: str = "", payload_file: str = "",
         raise ValueError("pass payload or payload_file")
     if payload_file:
         payload = open(payload_file, encoding="utf-8").read()
-    text = decompress(payload)
+    text = _decompress_cached(payload)
     if start_line or end_line:
         rows = text.split("\n")
         lo = max(1, start_line or 1)

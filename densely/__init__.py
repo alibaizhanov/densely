@@ -56,7 +56,10 @@ def _pack_words(packed: bytes):
     return body, pad
 
 
-def compress(text: str, backend: str = "lzma") -> str:
+FAST_PRESET_THRESHOLD = 2_000_000  # bytes; above this lzma -9e gets slow
+
+
+def compress(text: str, backend: str = "lzma", preset: int | None = None) -> str:
     if backend == "neural":
         try:
             payload = _compress_neural(text)
@@ -66,7 +69,9 @@ def compress(text: str, backend: str = "lzma") -> str:
         except Exception as e:
             print(f"neural backend failed ({e}), falling back to lzma", file=sys.stderr)
     raw = text.encode("utf-8")
-    body, pad = _pack_words(lzma.compress(raw, preset=9 | lzma.PRESET_EXTREME))
+    if preset is None:
+        preset = 6 if len(raw) > FAST_PRESET_THRESHOLD else 9 | lzma.PRESET_EXTREME
+    body, pad = _pack_words(lzma.compress(raw, preset=preset))
     digest = hashlib.sha256(raw).hexdigest()[:16]
     return f"{MAGIC} pad={pad} sha={digest}\n{body}"
 
