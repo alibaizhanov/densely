@@ -52,7 +52,7 @@ method.
 ## Usage
 
 ```bash
-pip install "git+https://github.com/alibaizhanov/densely#egg=densely[mcp]"
+pip install "densely[mcp]"
 # extras: [neural] for the neural backend (torch + transformers)
 
 densely compress  big_context.txt -o payload.dense
