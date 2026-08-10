@@ -7,16 +7,14 @@ short preview + a .dense sidecar path, and records savings in the ledger.
 Exits 0 silently (passthrough) in every other case — including any error:
 a hook must never break the agent.
 
-Register (absolute paths, see README):
-  PostToolUse matcher "Read|Bash" -> command: <python3> <this file>
+Register (absolute path, see README):
+  PostToolUse matcher "Read|Bash" -> command: $(which densely-hook)
 """
 
 import json
 import os
 import sys
 import time
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 MIN_TOKENS = int(os.environ.get("DENSELY_HOOK_MIN_TOKENS", "5000"))
 CODE_EXT = {".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".c",
@@ -107,8 +105,12 @@ def main():
     }))
 
 
-if __name__ == "__main__":
+def entry():
     try:
         main()
     except Exception:
         sys.exit(0)  # never break the agent
+
+
+if __name__ == "__main__":
+    entry()

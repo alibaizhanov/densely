@@ -4,10 +4,11 @@ runs real LLM+arithmetic-coding round trips. Run explicitly:
     python3 -m pytest test_neural.py -q
 """
 
-import neural
+from densely import neural
 from densely import MAGIC_NEURAL, compress, decompress
 
-SMALL_CODE = open("densely.py", encoding="utf-8").read()[:800]
+import densely
+SMALL_CODE = open(densely.__file__, encoding="utf-8").read()[:800]
 
 
 def test_single_segment_roundtrip():

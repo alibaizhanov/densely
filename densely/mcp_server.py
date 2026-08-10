@@ -2,10 +2,10 @@
 """densely MCP server: lossless context compression tools for AI agents.
 
 Register with Claude Code:
-    claude mcp add densely -- python3 /path/to/densely/densely_mcp.py
+    claude mcp add --scope user densely -- "$(which densely-mcp)"
 
 Cursor / other MCP clients (mcpServers config):
-    {"densely": {"command": "python3", "args": ["/path/to/densely/densely_mcp.py"]}}
+    {"densely": {"command": "/absolute/path/to/densely-mcp"}}
 
 Workflow: call compress_file INSTEAD of reading a large file (or
 compress_text on a large tool output). Keep the returned payload in the
@@ -78,7 +78,7 @@ def stats() -> str:
     """Show cumulative tokens saved by densely on this machine (from the
     auto-compression hook ledger)."""
     import time
-    from densely_hook import LEDGER
+    from densely.hook import LEDGER
     import json as _json
     day = week = total = 0
     now = time.time()
@@ -140,5 +140,9 @@ def expand(payload: str = "", payload_file: str = "",
     return text
 
 
-if __name__ == "__main__":
+def main():
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -4,7 +4,7 @@
 tokens with guaranteed byte-exact reconstruction — verified by sha256 on
 every decompress.
 
-![demo](demo.gif)
+![demo](assets/demo.gif)
 
 An o200k token can carry up to ~17.6 bits of information, but typical code
 occupies tokens at only ~5–6 bits each. densely reclaims the difference:
@@ -52,14 +52,13 @@ method.
 ## Usage
 
 ```bash
-git clone https://github.com/alibaizhanov/densely && cd densely
-pip install tiktoken                    # lzma backend (default)
-pip install torch transformers          # optional: neural backend
+pip install "git+https://github.com/alibaizhanov/densely#egg=densely[mcp]"
+# extras: [neural] for the neural backend (torch + transformers)
 
-python3 densely.py compress  big_context.txt -o payload.dense
-python3 densely.py compress  src.py -o payload.dense --backend neural
-python3 densely.py decompress payload.dense   -o restored.txt   # byte-identical
-python3 densely.py stats     file1.py file2.json                # token savings
+densely compress  big_context.txt -o payload.dense
+densely compress  src.py -o payload.dense --backend neural
+densely decompress payload.dense   -o restored.txt   # byte-identical
+densely stats     file1.py file2.json                # token savings
 ```
 
 Library:
@@ -78,10 +77,10 @@ assert decompress(payload) == text  # always true, sha256-checked
 
 ```bash
 # Claude Code
-claude mcp add --scope user densely -- "$(which python3)" /path/to/densely/densely_mcp.py
+claude mcp add --scope user densely -- "$(which densely-mcp)"
 
 # Cursor (~/.cursor/mcp.json) and other MCP clients
-{"mcpServers": {"densely": {"command": "/absolute/path/to/python3", "args": ["/path/to/densely/densely_mcp.py"]}}}
+{"mcpServers": {"densely": {"command": "/absolute/path/to/densely-mcp"}}}
 ```
 
 Three tools:
@@ -117,13 +116,16 @@ your shell PATH):
       "matcher": "Read|Bash",
       "hooks": [{
         "type": "command",
-        "command": "/absolute/path/to/python3 /path/to/densely/densely_hook.py",
+        "command": "/absolute/path/to/densely-hook",
         "timeout": 30
       }]
     }]
   }
 }
 ```
+
+(`which densely-hook` after install gives the absolute path — hooks run
+outside your shell PATH, so absolute paths only.)
 
 Tune with `DENSELY_HOOK_MIN_TOKENS` (default 5000). Code files the agent
 is editing are never touched.
@@ -208,8 +210,8 @@ founding-user pricing)
 ## Tests
 
 ```bash
-python3 -m pytest test_densely.py      # fast: lzma backend, 13 tests
-python3 -m pytest test_neural.py        # slow (~1 min): real LLM round trips
+python3 -m pytest tests/test_core.py tests/test_mcp.py   # fast suites
+python3 -m pytest tests/test_neural.py                   # slow (~1 min): real LLM round trips
 ```
 
 Fast suite: byte-exact round-trips (unicode, CJK, emoji, random bytes,

@@ -1,6 +1,6 @@
 import pytest
 
-from densely_mcp import compress_file, compress_text, expand
+from densely.mcp_server import compress_file, compress_text, expand
 
 
 LOG = "\n".join(
@@ -71,7 +71,7 @@ def test_search_in_payload(tmp_path):
     p = tmp_path / "app.log"
     p.write_text(LOG.replace("request done", "request FAILED", 3))
     result = compress_file(str(p))
-    from densely_mcp import search
+    from densely.mcp_server import search
     payload = _payload_of(result)
     out = search("FAILED", payload=payload)
     assert out.startswith("3 of 300 lines match")
@@ -79,6 +79,6 @@ def test_search_in_payload(tmp_path):
 
 
 def test_search_no_match():
-    from densely_mcp import search
+    from densely.mcp_server import search
     payload = _payload_of(compress_text(LOG))
     assert search("nonexistent_xyz", payload=payload).startswith("0 of 300")

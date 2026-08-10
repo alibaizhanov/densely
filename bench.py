@@ -18,8 +18,9 @@ from densely import compress, decompress, ntok
 
 
 def code_sample():
+    import densely
     parts = [open(argparse_module.__file__, encoding="utf-8").read(),
-             open("densely.py", encoding="utf-8").read()]
+             open(densely.__file__, encoding="utf-8").read()]
     return "\n".join(parts)
 
 
