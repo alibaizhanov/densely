@@ -177,8 +177,15 @@ Different philosophies: *maximum savings with silent degradation* vs.
   compresses 7x+, dense prose ~1.5–2x, already-compressed or random data
   ~0% (payload is never larger than a few header tokens worse than raw
   input — check `stats` before shipping).
-- Token counts are measured with the o200k tokenizer. Other tokenizers
-  share the single-token-word property but need their own alphabet scan.
+- Token counts are measured with the o200k tokenizer, and the
+  16-bits-per-token guarantee is o200k-specific. On other tokenizers
+  reconstruction stays byte-exact but density degrades (measured:
+  cl100k keeps only 54.5% of carrier words single-token — effective
+  ~10.5 bits/token). Verify against your target with
+  `python3 tools/calibrate.py` (supports tiktoken encodings and the
+  Anthropic count_tokens API). Per-tokenizer alphabets are the fix and
+  are on the roadmap — the o200k∩cl100k intersection already yields a
+  15-bits/token alphabet valid on both.
 - **Neural backend caveats**: slow (~85 KB of code takes minutes on Apple
   Silicon vs milliseconds for lzma) and requires torch + a ~1 GB model
   download on first use. Reconstruction is bit-exact only when
