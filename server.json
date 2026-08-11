@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.alibaizhanov/densely",
+  "description": "Lossless context compression: 2-8x fewer tokens, byte-exact recovery, search inside payloads",
+  "repository": {
+    "url": "https://github.com/alibaizhanov/densely",
+    "source": "github"
+  },
+  "version": "0.2.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "densely",
+      "version": "0.2.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
