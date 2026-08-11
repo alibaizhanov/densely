@@ -186,15 +186,18 @@ must survive compaction, export, and machine moves. Use both.
   compresses 7x+, dense prose ~1.5–2x, already-compressed or random data
   ~0% (payload is never larger than a few header tokens worse than raw
   input — check `stats` before shipping).
-- Token counts are measured with the o200k tokenizer, and the
-  16-bits-per-token guarantee is o200k-specific. On other tokenizers
-  reconstruction stays byte-exact but density degrades (measured:
-  cl100k keeps only 54.5% of carrier words single-token — effective
-  ~10.5 bits/token). Verify against your target with
-  `python3 tools/calibrate.py` (supports tiktoken encodings and the
-  Anthropic count_tokens API). Per-tokenizer alphabets are the fix and
-  are on the roadmap — the o200k∩cl100k intersection already yields a
-  15-bits/token alphabet valid on both.
+- Density is per-tokenizer; reconstruction is always byte-exact. Two
+  alphabets ship today: `o200k` (65,536 words, exactly 16 bits/token on
+  OpenAI o200k) and `claude1` (1,024 words, exactly 10 bits/token on
+  Claude Sonnet 5 / Opus 5 / Fable 5 — harvested empirically through the
+  count_tokens API, since Anthropic's vocabulary isn't public). The MCP
+  server and hook default to `claude1`; the CLI defaults to `o200k`
+  (`--alphabet` / `DENSELY_ALPHABET` to override). Measured on a 172KB
+  log with count_tokens on Sonnet 5: raw 93,117 tokens -> claude1
+  payload 25,904 (72.2% saved; the o200k alphabet managed only 47.8%
+  there). Verify any alphabet against any target with
+  `python3 tools/calibrate.py`; harvest new ones with
+  `tools/build_alphabet.py`.
 - **Neural backend caveats**: slow (~85 KB of code takes minutes on Apple
   Silicon vs milliseconds for lzma) and requires torch + a ~1 GB model
   download on first use. Reconstruction is bit-exact only when

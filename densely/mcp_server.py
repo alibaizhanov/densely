@@ -49,7 +49,7 @@ def _preview(text: str, lines: int = 5) -> str:
     return head if len(rows) <= lines else head + f"\n... ({len(rows)} lines total)"
 
 
-ALPHABET = os.environ.get("DENSELY_ALPHABET", "o200k")
+ALPHABET = os.environ.get("DENSELY_ALPHABET", "claude1")
 
 
 def _compressed(text: str, label: str, sidecar: str) -> str:

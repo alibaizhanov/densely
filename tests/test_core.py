@@ -78,3 +78,13 @@ def test_generic_alphabet_roundtrip():
     p = densely.compress(text, alphabet="t14")
     assert "alph=t14" in p.split("\n")[0]
     assert densely.decompress(p) == text
+
+
+def test_claude1_alphabet_roundtrip():
+    from densely import compress, decompress, _get_alphabet
+    words, bits, _ = _get_alphabet("claude1")
+    assert len(words) == 1024 and bits == 10
+    text = "config_value=8472 trace=deadbeef ERROR at line 507\n" * 300
+    p = compress(text, alphabet="claude1")
+    assert "alph=claude1" in p.split("\n")[0]
+    assert decompress(p) == text
