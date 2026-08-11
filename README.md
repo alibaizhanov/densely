@@ -254,3 +254,5 @@ Fast suite: byte-exact round-trips (unicode, CJK, emoji, random bytes,
 payload-lookalike inputs), tamper detection, carrier-alphabet density.
 Neural suite: single- and multi-segment round trips, no-silent-fallback,
 beats-lzma check.
+
+<!-- mcp-name: io.github.alibaizhanov/densely -->
