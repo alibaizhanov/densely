@@ -37,6 +37,23 @@ benefits from the model having seen Python's stdlib during training; the
 86.3% row is this repo's own sources — code that did not exist before
 2026-08-08 — and is the honest number for novel code (~0.56 bit/byte).
 
+### Measured on real-world data
+
+Same pipeline pointed at data we didn't curate: this repo's own sources, an
+installed pip module, a slice of a real macOS `/var/log/install.log`, a real
+`package-lock.json`, and the live npm registry response for `express`.
+o200k counted locally with tiktoken; Claude counted via Anthropic's own
+`count_tokens` endpoint (Sonnet 5, request overhead calibrated out), using
+the `claude1` alphabet. Every row round-tripped byte-exact.
+
+| Data                              | Size   | o200k raw → payload | Saved | Claude raw → payload | Saved |
+|-----------------------------------|--------|---------------------|-------|----------------------|-------|
+| This repo's own code              | 25 KB  | 7,008 → 4,254       | 39.3% | 10,724 → 6,811       | 36.5% |
+| Installed pip module (factory.py) | 32 KB  | 6,332 → 3,956       | 37.5% | 10,625 → 6,334       | 40.4% |
+| Real system log (install.log)     | 195 KB | 65,684 → 4,204      | **93.6%** | 104,328 → 6,732  | **93.5%** |
+| Real package-lock.json            | 27 KB  | 11,421 → 3,690      | 67.7% | 15,743 → 5,910       | 62.5% |
+| Live npm registry JSON (express)  | 195 KB | 76,167 → 12,293     | 83.9% | 113,444 → 19,672     | 82.7% |
+
 For comparison, [Headroom](https://github.com/headroomlabs-ai/headroom)
 reports 15–20% savings for coding agents and 60–95% on JSON — achieved by
 *dropping* content from context, with originals kept in a local cache with
