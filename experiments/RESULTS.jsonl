@@ -1,0 +1,1 @@
+{"exp": "E4", "date": "2026-08-12", "verdict": "reject", "numbers": {"1": {"ratio": 8.187, "sec": 0.03}, "3": {"ratio": 8.288, "sec": 0.03}, "6": {"ratio": 8.58, "sec": 0.12}, "9": {"ratio": 8.58, "sec": 0.16}, "9e": {"ratio": 8.789, "sec": 0.39}}, "notes": "lzma preset sweep, 9 real files S/M/L; criterion: within 1% of preset-9 ratio and >=1.7x faster"}
