@@ -6,6 +6,9 @@ every decompress.
 
 ![demo](assets/demo.gif)
 
+MIT, free forever. (A hosted tier is coming for teams —
+[waitlist](https://densely.dev/#pro).)
+
 An o200k token can carry up to ~17.6 bits of information, but typical code
 occupies tokens at only ~5–6 bits each. densely reclaims the difference:
 
@@ -243,8 +246,8 @@ teams running agents in production:
 - **Team dashboard** — token savings per agent, per day, in dollars
 - **Cross-machine payloads** — compress in CI, expand anywhere
 
-**[Join the waitlist →](https://tally.so/r/Xx77V4)** (early access +
-founding-user pricing)
+**[Join the waitlist →](https://densely.dev/#pro)** (early access order +
+founding-user pricing, no rug pull — the library stays MIT)
 
 ## Roadmap
 

@@ -55,6 +55,9 @@ def main():
         if len(args.files) > 1:
             print(f"TOTAL: {total_o} -> {total_p} tokens "
                   f"({total_o / total_p:.2f}x, saved {100 * (1 - total_p / total_o):.1f}%)")
+        if total_p < total_o:
+            print("\nIf densely is earning its keep, a GitHub star helps others find it:"
+                  "\n  https://github.com/alibaizhanov/densely")
 
 
 def _write(output, content):
