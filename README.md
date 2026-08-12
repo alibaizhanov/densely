@@ -215,6 +215,16 @@ must survive compaction, export, and machine moves. Use both.
   there). Verify any alphabet against any target with
   `python3 tools/calibrate.py`; harvest new ones with
   `tools/build_alphabet.py`.
+- **When you don't need this** (fair point from a redditor): if you
+  control your agent harness end-to-end, you can build the same pattern
+  yourself — zstd/lzma the big outputs into files, give the agent a
+  search tool, keep payloads out of the model's input. densely is that
+  architecture packaged (plus sha256 verification, line-level retrieval,
+  and per-tokenizer carrier alphabets for the subset that must live
+  *inside* the prompt — content that has to survive compaction verbatim
+  or travel with an exported session). It earns its keep inside closed
+  harnesses (Claude Code, Cursor), ephemeral sandboxes, and anywhere
+  "reliable disk + grep" doesn't reach.
 - **Neural backend caveats**: slow (~85 KB of code takes minutes on Apple
   Silicon vs milliseconds for lzma) and requires torch + a ~1 GB model
   download on first use. Reconstruction is bit-exact only when
