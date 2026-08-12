@@ -5,7 +5,7 @@
 # Results ledger: RESULTS.jsonl (one line per completed experiment)
 # Corpus: experiments/corpus/{log,json,code}_{S,M,L}.txt (real data, gitignored)
 
-## E1 [ ] zstd + trained dictionary vs lzma (CORE_ROADMAP T1)
+## E1 [x] zstd + trained dictionary vs lzma (CORE_ROADMAP T1)
 Hypothesis: zstd with a dictionary trained on log/JSON-domain samples beats
   lzma preset 9 on ratio for S/M inputs (dictionary shines on small inputs)
   and is >=10x faster.
@@ -14,6 +14,20 @@ Method: pip zstandard; train dict on held-out log+json samples (NOT the
   wall time vs lzma preset 9 and preset 3.
 Verify (pre-registered): adopt into backlog if ratio within 3% of lzma on L
   AND better on S AND >=10x faster. Else reject with numbers.
+RESULT 2026-08-13: formal REJECT (speedup only 1.7x at level 19 — the speed
+  criterion was calibrated for low levels, my miss). But the RATIO finding is
+  big: domain-trained dict on LOGS beats lzma9 by 1.4x (L) to 1.95x (S).
+  Caveat: dict trained on the same log file's other slices — same-domain but
+  same-source; gains likely inflated. E1b queued with honest cross-source test.
+
+## E1b [ ] zstd domain dictionaries: cross-SOURCE log test
+Hypothesis: a dict trained on OTHER log sources (system.log, CI logs, nginx
+  samples) still beats lzma9 on install.log corpus by >=25% — making a shipped
+  "logs" dictionary profile viable (huge for our headline log numbers).
+Method: train on 3 different log sources, test on corpus logs (never seen);
+  also test json dict trained on other registries' JSON. Level sweep 3/10/19.
+Verify: >=25% size reduction vs lzma9 on log_L with fully held-out sources
+  -> adopt: optional backend zstd-dict with shipped 'logs'/'json' profiles.
 
 ## E2 [ ] Number-preprocessor (Denum-style) before lzma (T1)
 Hypothesis: rewriting timestamps/floats/ids into delta-encoded streams before
