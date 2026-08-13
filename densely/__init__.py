@@ -14,8 +14,11 @@ data, meant to sit next to a readable summary.
 
 import hashlib
 import lzma
+import os
 import re
 import sys
+import time
+import urllib.parse
 
 import tiktoken
 
@@ -103,8 +106,60 @@ def _pack_words(packed: bytes):
 FAST_PRESET_THRESHOLD = 2_000_000  # bytes; above this lzma -9e gets slow
 
 
+def _source_fields(source: str | None) -> str:
+    """Header fields identifying where the text came from, for staleness checks.
+
+    No separate content hash is stored: the existing `sha` is already the digest of
+    the text being compressed, which for a file *is* its content at capture time.
+    Path is percent-encoded because the header is space-delimited and paths are not.
+    """
+    if not source:
+        return ""
+    try:
+        size = os.path.getsize(source)
+    except OSError:
+        return ""
+    return (f" src={urllib.parse.quote(os.path.abspath(source), safe='')}"
+            f" at={int(time.time())} sz={size}")
+
+
+def source_status(payload: str) -> dict | None:
+    """Has the source changed since this payload was made?
+
+    Returns None when the payload carries no source (nothing to check), otherwise
+    a dict with "state": one of "ok", "gone", "stale".
+
+    A payload that is byte-exact can still be wrong: it faithfully reproduces what
+    the file said *then*. Verifying the round trip says nothing about whether the
+    file still says it, and those two properties get conflated easily.
+    """
+    header = payload.partition("\n")[0]
+    kv = dict(f.split("=", 1) for f in header.split(" ")[1:] if "=" in f)
+    if "src" not in kv:
+        return None
+    path = urllib.parse.unquote(kv["src"])
+    at, size = int(kv.get("at", 0)), int(kv.get("sz", -1))
+    info = {"path": path, "captured_at": at}
+    try:
+        st = os.stat(path)
+    except OSError:
+        return {**info, "state": "gone"}
+    info["modified_at"] = int(st.st_mtime)
+    # Cheap first: same size and not touched since capture means unchanged in
+    # every realistic case, and avoids re-reading a file that is large by
+    # definition. Only when that fails do we pay for a hash.
+    if st.st_size == size and st.st_mtime <= at:
+        return {**info, "state": "ok"}
+    try:
+        with open(path, "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()[:16]
+    except OSError:
+        return {**info, "state": "gone"}
+    return {**info, "state": "ok" if digest == kv.get("sha") else "stale"}
+
+
 def compress(text: str, backend: str = "lzma", preset: int | None = None,
-             alphabet: str = "o200k") -> str:
+             alphabet: str = "o200k", source: str | None = None) -> str:
     if backend == "neural":
         try:
             payload = _compress_neural(text)
@@ -121,9 +176,10 @@ def compress(text: str, backend: str = "lzma", preset: int | None = None,
     if alphabet != "o200k":
         words, bits, _ = _get_alphabet(alphabet)
         body = "".join(words[i] for i in _pack_bits(packed, bits))
-        return f"{MAGIC} alph={alphabet} len={len(packed)} sha={digest}\n{body}"
+        return (f"{MAGIC} alph={alphabet} len={len(packed)} sha={digest}"
+                f"{_source_fields(source)}\n{body}")
     body, pad = _pack_words(packed)
-    return f"{MAGIC} pad={pad} sha={digest}\n{body}"
+    return f"{MAGIC} pad={pad} sha={digest}{_source_fields(source)}\n{body}"
 
 
 def _compress_neural(text: str) -> str:

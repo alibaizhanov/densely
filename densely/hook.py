@@ -54,6 +54,7 @@ def main():
     if data.get("hook_event_name") != "PostToolUse":
         return
     tool = data.get("tool_name", "")
+    path = ""
     if tool == "Read":
         path = (data.get("tool_input") or {}).get("file_path", "")
         if os.path.splitext(path)[1].lower() in CODE_EXT:
@@ -69,7 +70,9 @@ def main():
     orig_tokens = ntok(text)
     if orig_tokens < MIN_TOKENS:
         return
-    payload = compress(text, alphabet=os.environ.get("DENSELY_ALPHABET", "claude1"))
+    # Bash output has no source file to go stale against; a Read does.
+    payload = compress(text, alphabet=os.environ.get("DENSELY_ALPHABET", "claude1"),
+                       source=path or None)
     payload_tokens = ntok(payload)
     if payload_tokens >= orig_tokens:
         return

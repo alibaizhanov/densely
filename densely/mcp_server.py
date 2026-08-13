@@ -52,8 +52,8 @@ def _preview(text: str, lines: int = 5) -> str:
 ALPHABET = os.environ.get("DENSELY_ALPHABET", "claude1")
 
 
-def _compressed(text: str, label: str, sidecar: str) -> str:
-    payload = compress(text, alphabet=ALPHABET)
+def _compressed(text: str, label: str, sidecar: str, source: str | None = None) -> str:
+    payload = compress(text, alphabet=ALPHABET, source=source)
     o, c = ntok(text), ntok(payload)
     if c >= o:
         return (f"{label} is not compressible ({o} tokens); returning original:\n\n{text}")
@@ -83,7 +83,7 @@ def compress_file(path: str) -> str:
     Do NOT compress files you are actively editing or need to understand —
     read those normally; compress reference material and bulky data."""
     text = open(path, encoding="utf-8").read()
-    return _compressed(text, path, sidecar=path + ".dense")
+    return _compressed(text, path, sidecar=path + ".dense", source=path)
 
 
 @mcp.tool()
@@ -141,6 +141,32 @@ def search(pattern: str, payload: str = "", payload_file: str = "") -> str:
 
 
 @mcp.tool()
+def _stale_banner(status) -> str:
+    """Warn, but still hand over the content.
+
+    Refusing would be safer against a misled agent and worse in the case this tool
+    exists for: compress a log, the log rotates, and the payload is now the only
+    surviving copy of what it said. Refusing there destroys data with no way back,
+    whereas an ignored warning leaves us exactly where we are today. The two
+    failure modes are not symmetric, so the content always comes through.
+    """
+    if not status or status["state"] == "ok":
+        return ""
+    if status["state"] == "gone":
+        return (f"NOTE: source {status['path']} no longer exists. This payload may be "
+                f"the only remaining copy of that content.\n\n")
+    return (f"STALE: source {status['path']} changed after this was captured "
+            f"(captured {_ts(status['captured_at'])}, file modified "
+            f"{_ts(status.get('modified_at', 0))}). What follows is the content as it "
+            f"was then, not as it is now. Re-read the source if you need current "
+            f"state.\n\n")
+
+
+def _ts(epoch: int) -> str:
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def expand(payload: str = "", payload_file: str = "",
            start_line: int = 0, end_line: int = 0) -> str:
     """Restore the exact original text from a densely payload
@@ -156,10 +182,13 @@ def expand(payload: str = "", payload_file: str = "",
     # Record that the payload alone was not enough. Compressions without expands
     # are savings; compressions with expands are savings that cost a round trip,
     # and the ledger cannot tell them apart unless this side is written down too.
+    banner = ""
     try:
-        from densely import ledger, ntok
-        ledger.add("expand", tokens=ntok(text),
-                   sliced=bool(start_line or end_line))
+        from densely import ledger, ntok, source_status
+        status = source_status(payload)
+        ledger.add("expand", tokens=ntok(text), sliced=bool(start_line or end_line),
+                   source=(status or {}).get("state"))
+        banner = _stale_banner(status)
     except Exception:
         pass
     if start_line or end_line:
@@ -167,8 +196,8 @@ def expand(payload: str = "", payload_file: str = "",
         lo = max(1, start_line or 1)
         hi = min(len(rows), end_line or len(rows))
         slice_ = "\n".join(rows[lo - 1:hi])
-        return f"lines {lo}-{hi} of {len(rows)}:\n{slice_}"
-    return text
+        return f"{banner}lines {lo}-{hi} of {len(rows)}:\n{slice_}"
+    return banner + text
 
 
 def main():

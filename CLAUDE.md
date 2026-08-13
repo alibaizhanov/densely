@@ -57,3 +57,26 @@ For multi-step tasks, state a brief plan:
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
 These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+## Project notes
+
+**Never run densely by hand without redirecting the ledger.** Any manual
+`expand()` or `compress_file()` appends to `~/.densely/ledger.jsonl`, which is the
+file whose numbers get quoted publicly. Test runs and experiments are not usage:
+
+    DENSELY_STATE_DIR=/tmp/scratch python3 -c "..."
+
+The pytest suite already isolates itself via `tests/conftest.py`. Ad-hoc commands
+do not, and this has silently polluted the real ledger twice.
+
+**Byte-exact is not the same as correct.** The `sha` in a payload header proves
+`expand` returns what `compress` was given. It says nothing about whether the source
+still says that. `source_status()` answers the second question for payloads that
+carry a `src` field.
+
+**On staleness, warn — never withhold.** A rotated log leaves the payload as the
+only surviving copy of what it said, so refusing to expand destroys data with no way
+back, while an ignored warning leaves things exactly where they were. The two
+failure modes are not symmetric.
