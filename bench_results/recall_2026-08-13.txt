@@ -1,0 +1,28 @@
+scenario            verdict   answer
+01 pool_config      correct   7
+02 request_id       correct   req-7f3a91c4e9
+03 rollback_version correct   worker:3.9.4
+04 threshold        correct   8500
+05 hostname         correct   kv-a7
+06 absent           correct   NOT PRESENT
+
+correct            6/6
+answered from preview  0/6   <- compression cost the answer
+other / fabricated 0/6
+expanded           6/6   <- extra tool call the compression forced
+
+Run: 2026-08-13, six scenarios, one agent each (Sonnet), claude1 alphabet.
+
+Reading this honestly:
+
+  6/6 correct with 0 fabrications is the answer to "when the agent has to go back
+  for the exact value, does compression cost it?" — no, it does not, and the
+  distractor sitting in the preview did not catch anyone.
+
+  6/6 expanded is NOT a finding about real usage. These scenarios are built so the
+  answer cannot be in the preview; expanding was the only way to succeed. It says
+  the retrieval path works, not how often it is needed.
+
+  How often it is needed is what the usage ledger answers, and only real work can
+  populate that. This bench and the ledger are two halves: can it retrieve, and
+  does it have to.
