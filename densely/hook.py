@@ -40,17 +40,13 @@ def extract_text(resp):
 
 
 def ledger_add(orig, new):
-    os.makedirs(STATE_DIR, exist_ok=True)
-    with open(LEDGER, "a") as fh:
-        fh.write(json.dumps({"ts": int(time.time()), "saved": orig - new}) + "\n")
+    from densely import ledger
+    ledger.add("compress", saved=orig - new, orig=orig, payload=new)
 
 
 def ledger_total():
-    try:
-        with open(LEDGER) as fh:
-            return sum(json.loads(line)["saved"] for line in fh if line.strip())
-    except FileNotFoundError:
-        return 0
+    from densely import ledger
+    return ledger.total_saved()
 
 
 def main():

@@ -153,6 +153,15 @@ def expand(payload: str = "", payload_file: str = "",
     if payload_file:
         payload = open(payload_file, encoding="utf-8").read()
     text = _decompress_cached(payload)
+    # Record that the payload alone was not enough. Compressions without expands
+    # are savings; compressions with expands are savings that cost a round trip,
+    # and the ledger cannot tell them apart unless this side is written down too.
+    try:
+        from densely import ledger, ntok
+        ledger.add("expand", tokens=ntok(text),
+                   sliced=bool(start_line or end_line))
+    except Exception:
+        pass
     if start_line or end_line:
         rows = text.split("\n")
         lo = max(1, start_line or 1)

@@ -26,7 +26,15 @@ def main():
     s = sub.add_parser("stats", help="show token savings for files (no output written)")
     s.add_argument("files", nargs="+")
 
+    sub.add_parser("ledger", help="local usage so far: savings, and how often "
+                                  "a payload had to be expanded again")
+
     args = p.parse_args()
+
+    if args.cmd == "ledger":
+        from densely import ledger
+        print(ledger.format_summary())
+        return
 
     if args.cmd == "compress":
         text = open(args.file, encoding="utf-8").read()
