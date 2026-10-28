@@ -103,6 +103,13 @@ claude mcp add --scope user densely -- "$(which densely-mcp)"
 {"mcpServers": {"densely": {"command": "/absolute/path/to/densely-mcp"}}}
 ```
 
+To share one server process across clients, run `densely-mcp --http [PORT]`
+(127.0.0.1 only, default port 8765) and register it by URL instead:
+`claude mcp add --transport http --scope user densely http://127.0.0.1:8765/mcp`,
+and `{"densely": {"url": "http://127.0.0.1:8765/mcp"}}` in Cursor. Relative
+paths passed to `compress_file` then resolve against the server's working
+directory, so pass absolute paths.
+
 Three tools:
 
 - **compress_file(path)** — agent calls this *instead of reading* a large
@@ -129,7 +136,8 @@ verbatim:
 ## Automatic mode (hook)
 
 Zero-effort savings: a PostToolUse hook compresses every large tool
-output (Bash output, Read of non-code files, >= 5,000 tokens) on the
+output (Bash, PowerShell and Grep output, Read of non-code files,
+>= 2,000 tokens) on the
 fly — the agent sees a preview + stats, exact content stays available
 via search/expand, and every replacement is recorded in a savings
 ledger (`stats` tool, or the running total shown in each replacement).
@@ -141,7 +149,7 @@ your shell PATH):
 {
   "hooks": {
     "PostToolUse": [{
-      "matcher": "Read|Bash",
+      "matcher": "Read|Bash|PowerShell|Grep",
       "hooks": [{
         "type": "command",
         "command": "/absolute/path/to/densely-hook",
@@ -155,8 +163,46 @@ your shell PATH):
 (`which densely-hook` after install gives the absolute path — hooks run
 outside your shell PATH, so absolute paths only.)
 
-Tune with `DENSELY_HOOK_MIN_TOKENS` (default 5000). Code files the agent
+Tune with `DENSELY_HOOK_MIN_TOKENS` (default 2000). Code files the agent
 is editing are never touched.
+
+Claude Code cuts Bash/PowerShell output to `BASH_MAX_OUTPUT_LENGTH`
+(default 30,000) chars before the hook sees it. Output that hit this limit
+is passed through untouched: compressing the cut text would give a sidecar
+that only looks complete. Claude Code saves such output to a file instead —
+compress that file with `compress_file`, or redirect large command output
+to a file in the first place.
+
+Needs Claude Code 2.1.121 or later: older versions let PostToolUse hooks
+rewrite MCP tool output only, so the hook runs but the agent still gets the
+full Bash/Read output.
+
+### Cursor (IDE and CLI)
+
+Cursor hooks cannot replace a built-in tool's output, so the same
+`densely-hook` answers `preToolUse` on `Shell` instead: it rewrites the
+command to run in the agent's shell with its output captured, then
+`densely-filter` prints that output as-is, or as the same preview + `.dense`
+path when it is large. Add to `~/.cursor/hooks.json`:
+
+```json
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [{
+      "matcher": "Shell",
+      "command": "/absolute/path/to/densely-hook",
+      "timeout": 10
+    }]
+  }
+}
+```
+
+and the MCP server (for `search`/`expand`) to `~/.cursor/mcp.json` under
+`mcpServers`. Limits: only Shell output is compressed (not Read or Grep);
+stderr is merged into stdout; output shows up only when the command
+finishes; commands containing `exit` or `exec` are left alone, since they
+would end the shell before the output is printed.
 
 ## When it saves tokens (and when it doesn't)
 

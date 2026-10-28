@@ -33,6 +33,7 @@ neural = ["torch>=2.0", "transformers>=4.40", "numpy"]
 densely = "densely.cli:main"
 densely-mcp = "densely.mcp_server:main"
 densely-hook = "densely.hook:entry"
+densely-filter = "densely.hook:filter_entry"
 
 [tool.setuptools]
 packages = ["densely"]

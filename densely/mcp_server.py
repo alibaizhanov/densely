@@ -7,6 +7,9 @@ Register with Claude Code:
 Cursor / other MCP clients (mcpServers config):
     {"densely": {"command": "/absolute/path/to/densely-mcp"}}
 
+One shared server for all clients: run `densely-mcp --http` and point each
+client at http://127.0.0.1:8765/mcp instead.
+
 Workflow: call compress_file INSTEAD of reading a large file (or
 compress_text on a large tool output). Keep the returned payload in the
 conversation — it survives context compaction. Call expand when you need
@@ -91,7 +94,12 @@ def compress_text(text: str) -> str:
     """Compress a large piece of text (tool output, log excerpt, document)
     into a dense payload 2x-8x smaller in tokens. The payload is unreadable
     but restores the exact bytes via the expand tool."""
-    sidecar = os.path.join(os.path.expanduser("~"), ".densely-payload.dense")
+    state_dir = os.environ.get("DENSELY_STATE_DIR")
+    if state_dir:
+        os.makedirs(state_dir, exist_ok=True)
+        sidecar = os.path.join(state_dir, "densely-payload.dense")
+    else:
+        sidecar = os.path.join(os.path.expanduser("~"), ".densely-payload.dense")
     return _compressed(text, "text", sidecar=sidecar)
 
 
@@ -100,23 +108,27 @@ def stats() -> str:
     """Show cumulative tokens saved by densely on this machine (from the
     auto-compression hook ledger)."""
     import time
-    from densely.hook import LEDGER
-    import json as _json
+    from densely import ledger
     day = week = total = 0
+    seen = False
     now = time.time()
-    try:
-        with open(LEDGER) as fh:
-            for line in fh:
-                rec = _json.loads(line)
-                total += rec["saved"]
-                if now - rec["ts"] < 86400:
-                    day += rec["saved"]
-                if now - rec["ts"] < 7 * 86400:
-                    week += rec["saved"]
-    except FileNotFoundError:
+    for rec in ledger.entries():
+        seen = True
+        saved = rec.get("saved", 0)
+        total += saved
+        if now - rec["ts"] < 86400:
+            day += saved
+        if now - rec["ts"] < 7 * 86400:
+            week += saved
+    if not seen:
         return "densely has not saved anything yet on this machine."
+    # The figures above are gross: they ignore expands. Net is what was actually
+    # avoided, and only exists for entries that recorded the preview shown.
+    s = ledger.summary()
+    net = (f"Net after expands: {s['net_saved']} tokens (since previews were recorded)."
+           if s["net_tracked"] else "Net after expands: not tracked yet.")
     return (f"densely savings: {day} tokens today, {week} this week, "
-            f"{total} all-time on this machine.")
+            f"{total} all-time on this machine. {net}")
 
 
 @mcp.tool()
@@ -140,7 +152,6 @@ def search(pattern: str, payload: str = "", payload_file: str = "") -> str:
     return f"{len(hits)} of {len(rows)} lines match {pattern!r}:\n{body}{more}"
 
 
-@mcp.tool()
 def _stale_banner(status) -> str:
     """Warn, but still hand over the content.
 
@@ -167,6 +178,7 @@ def _ts(epoch: int) -> str:
     return _dt.datetime.fromtimestamp(epoch).strftime("%Y-%m-%d %H:%M:%S")
 
 
+@mcp.tool()
 def expand(payload: str = "", payload_file: str = "",
            start_line: int = 0, end_line: int = 0) -> str:
     """Restore the exact original text from a densely payload
@@ -179,29 +191,39 @@ def expand(payload: str = "", payload_file: str = "",
     if payload_file:
         payload = open(payload_file, encoding="utf-8").read()
     text = _decompress_cached(payload)
-    # Record that the payload alone was not enough. Compressions without expands
-    # are savings; compressions with expands are savings that cost a round trip,
-    # and the ledger cannot tell them apart unless this side is written down too.
-    banner = ""
-    try:
-        from densely import ledger, ntok, source_status
-        status = source_status(payload)
-        ledger.add("expand", tokens=ntok(text), sliced=bool(start_line or end_line),
-                   source=(status or {}).get("state"))
-        banner = _stale_banner(status)
-    except Exception:
-        pass
+    returned = text
     if start_line or end_line:
         rows = text.split("\n")
         lo = max(1, start_line or 1)
         hi = min(len(rows), end_line or len(rows))
-        slice_ = "\n".join(rows[lo - 1:hi])
-        return f"{banner}lines {lo}-{hi} of {len(rows)}:\n{slice_}"
-    return banner + text
+        returned = f"lines {lo}-{hi} of {len(rows)}:\n" + "\n".join(rows[lo - 1:hi])
+    # Record that the payload alone was not enough. Compressions without expands
+    # are savings; compressions with expands are savings that cost a round trip,
+    # and the ledger cannot tell them apart unless this side is written down too.
+    # "tokens" is the full original (it matches the compression's "orig");
+    # "returned" is what this call put in context — a slice costs less.
+    banner = ""
+    try:
+        from densely import ledger, ntok, source_status
+        status = source_status(payload)
+        ledger.add("expand", tokens=ntok(text), returned=ntok(returned),
+                   sliced=bool(start_line or end_line), source=(status or {}).get("state"))
+        banner = _stale_banner(status)
+    except Exception:
+        pass
+    return banner + returned
 
 
 def main():
-    mcp.run()
+    """densely-mcp [--http [PORT]]: stdio by default; --http serves one shared
+    process on 127.0.0.1 (default port 8765) that several clients connect to."""
+    import sys
+    args = sys.argv[1:]
+    if args[:1] == ["--http"]:
+        mcp.settings.port = int(args[1]) if len(args) > 1 else 8765
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

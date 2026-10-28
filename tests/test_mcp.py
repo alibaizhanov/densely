@@ -102,3 +102,81 @@ def test_small_file_also_writes_sidecar(tmp_path):
     sidecar = str(p) + ".dense"
     assert "PAYLOAD" in result and sidecar in result  # inline AND backup
     assert expand(payload_file=sidecar) == LOG
+
+
+def test_compress_text_sidecar_honours_state_dir(monkeypatch, tmp_path):
+    monkeypatch.setenv("DENSELY_STATE_DIR", str(tmp_path))
+    result = compress_text(LOG)
+    sidecar = str(tmp_path / "densely-payload.dense")
+    assert sidecar in result
+    assert expand(payload_file=sidecar) == LOG
+
+
+def test_stats_counts_compress_ignores_expand(monkeypatch, tmp_path):
+    import json
+    import time
+    from densely.mcp_server import stats
+    monkeypatch.setenv("DENSELY_STATE_DIR", str(tmp_path))
+    now = int(time.time())
+    rows = [{"ts": now, "saved": 100},
+            {"ts": now, "event": "compress", "saved": 50, "orig": 80, "payload": 30},
+            {"ts": now, "event": "expand", "tokens": 80, "sliced": False, "source": None}]
+    (tmp_path / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    assert stats() == ("densely savings: 150 tokens today, 150 this week, "
+                       "150 all-time on this machine. Net after expands: not tracked yet.")
+
+
+def test_stats_reports_net_after_expands(monkeypatch, tmp_path):
+    """Gross savings ignore expands; net subtracts what was pulled back."""
+    import json
+    import time
+    from densely.mcp_server import stats
+    monkeypatch.setenv("DENSELY_STATE_DIR", str(tmp_path))
+    now = int(time.time())
+    rows = [{"ts": now, "event": "compress", "saved": 259, "orig": 4710, "payload": 4451, "shown": 250},
+            {"ts": now, "event": "expand", "tokens": 4710, "returned": 4710, "sliced": False}]
+    (tmp_path / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    assert stats().endswith("Net after expands: -250 tokens (since previews were recorded).")
+
+
+def test_sliced_expand_records_returned_size(monkeypatch, tmp_path):
+    """A slice costs only itself; charging the full original overstates the loss."""
+    import json
+    from densely import compress
+    from densely.mcp_server import expand
+    monkeypatch.setenv("DENSELY_STATE_DIR", str(tmp_path))
+    expand(payload=compress(LOG), start_line=1, end_line=5)
+    rec = json.loads((tmp_path / "ledger.jsonl").read_text().splitlines()[-1])
+    assert rec["sliced"] and 0 < rec["returned"] < rec["tokens"]
+
+
+def test_stats_empty_ledger(monkeypatch, tmp_path):
+    from densely.mcp_server import stats
+    monkeypatch.setenv("DENSELY_STATE_DIR", str(tmp_path))
+    assert stats() == "densely has not saved anything yet on this machine."
+
+
+@pytest.mark.parametrize("argv, transport, port", [
+    (["densely-mcp"], "stdio", None),
+    (["densely-mcp", "--http"], "streamable-http", 8765),
+    (["densely-mcp", "--http", "9001"], "streamable-http", 9001),
+])
+def test_main_transport(argv, transport, port, monkeypatch):
+    from densely import mcp_server
+    calls = []
+    monkeypatch.setattr("sys.argv", argv)
+    monkeypatch.setattr(mcp_server.mcp.settings, "port", 8000)
+    monkeypatch.setattr(mcp_server.mcp, "run", lambda transport="stdio": calls.append(transport))
+    mcp_server.main()
+    assert calls == [transport]
+    if port:
+        assert mcp_server.mcp.settings.port == port
+        assert mcp_server.mcp.settings.host == "127.0.0.1"
+
+
+def test_registered_tools():
+    """expand is what every compression result tells the agent to call next."""
+    import asyncio
+    from densely.mcp_server import mcp
+    names = {t.name for t in asyncio.run(mcp.list_tools())}
+    assert names == {"compress_file", "compress_text", "stats", "search", "expand"}

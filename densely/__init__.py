@@ -200,7 +200,10 @@ def decompress(payload: str) -> str:
     want_sha = kv["sha"]
     if "alph" in kv:
         words, bits, index = _get_alphabet(kv["alph"])
-        indices = [index[" " + piece] for piece in body.split(" ") if piece]
+        try:
+            indices = [index[" " + piece] for piece in body.split(" ") if piece]
+        except KeyError as e:
+            raise ValueError(f"corrupt payload: unknown carrier word {e.args[0]!r}") from e
         packed = _unpack_bits(indices, bits, int(kv["len"]))
         try:
             raw = lzma.decompress(packed)
@@ -215,7 +218,10 @@ def decompress(payload: str) -> str:
     for piece in body.split(" "):
         if not piece:
             continue
-        idx = INDEX[" " + piece]
+        try:
+            idx = INDEX[" " + piece]
+        except KeyError as e:
+            raise ValueError(f"corrupt payload: unknown carrier word {e.args[0]!r}") from e
         out.append(idx >> 8)
         out.append(idx & 0xFF)
     if pad:

@@ -44,6 +44,13 @@ def test_tampered_payload_rejected():
         decompress(header + "\n" + " ".join(words))
 
 
+@pytest.mark.parametrize("alphabet", ["o200k", "claude1"])
+def test_unknown_carrier_word_rejected(alphabet):
+    payload = compress("important exact data " * 100, alphabet=alphabet)
+    with pytest.raises(ValueError):
+        decompress(payload + " Zzqxjv")
+
+
 def test_wrong_magic_rejected():
     with pytest.raises(ValueError):
         decompress("NOPE1 pad=0 sha=0000000000000000\n the of")

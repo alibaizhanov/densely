@@ -41,6 +41,27 @@ def test_legacy_entries_count_as_compressions():
         assert s["compress"] == 1 and s["saved"] == 500
 
 
+def test_net_saved_pays_for_expands():
+    """The agent sees the preview, and an expand re-pays the original: a compression
+    that had to be expanded in full is a loss, not the payload-based "saving"."""
+    with tempfile.TemporaryDirectory() as tmp:
+        _isolate(tmp)
+        ledger.add("compress", saved=900, orig=1000, payload=100)   # legacy: unpriced
+        ledger.add("compress", saved=259, orig=4710, payload=4451, shown=250)
+        ledger.add("expand", tokens=4710)
+        s = ledger.summary()
+        assert s["saved"] == 900 + 259
+        assert s["net_saved"] == 4710 - 250 - 4710
+
+
+def test_net_saved_charges_only_the_slice():
+    with tempfile.TemporaryDirectory() as tmp:
+        _isolate(tmp)
+        ledger.add("compress", saved=7000, orig=10000, payload=3000, shown=300)
+        ledger.add("expand", tokens=10000, returned=400, sliced=True)
+        assert ledger.summary()["net_saved"] == 10000 - 300 - 400
+
+
 def test_ledger_never_breaks_the_caller():
     """Telemetry that can fail a task is worse than no telemetry."""
     with tempfile.TemporaryDirectory() as tmp:

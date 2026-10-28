@@ -62,21 +62,30 @@ def summary():
     """Counts, savings, and the expand rate. Entries written before this module
     existed carry no "event" key; they were all compressions, so treat them as such
     rather than dropping them and understating history."""
-    out = {"compress": 0, "expand": 0, "saved": 0, "expanded_tokens": 0}
-    for e in entries():
+    out = {"compress": 0, "expand": 0, "saved": 0, "expanded_tokens": 0, "net_saved": 0}
+    rows = list(entries())
+    # Net = original - what the agent was shown (the preview) - what it expanded
+    # back. Entries before "shown" was recorded can't be priced honestly — the
+    # payload-based "saved" is not what the agent saw — so net starts there.
+    since = min((e.get("ts", 0) for e in rows if "shown" in e), default=None)
+    for e in rows:
+        counts = since is not None and e.get("ts", 0) >= since
         kind = e.get("event", "compress")
         if kind == "compress":
             out["compress"] += 1
             out["saved"] += e.get("saved", 0)
+            if counts and "shown" in e:
+                out["net_saved"] += e.get("orig", 0) - e["shown"]
         elif kind == "expand":
             out["expand"] += 1
             out["expanded_tokens"] += e.get("tokens", 0)
+            if counts:
+                # A sliced expand costs only the slice ("returned"); older
+                # entries recorded just the full size.
+                out["net_saved"] -= e.get("returned", e.get("tokens", 0))
+    out["net_tracked"] = since is not None
     out["expand_rate"] = out["expand"] / out["compress"] if out["compress"] else None
     return out
-
-
-def total_saved():
-    return summary()["saved"]
 
 
 def format_summary():
@@ -85,6 +94,8 @@ def format_summary():
         f"compressions   {s['compress']:>8}",
         f"tokens saved   {s['saved']:>8,}",
         f"expands        {s['expand']:>8}",
+        f"net saved      {s['net_saved']:>8,}  (after paying for expands; "
+        f"counted since previews were recorded)",
     ]
     if s["expand_rate"] is None:
         lines.append("expand rate         n/a  (nothing compressed yet)")
